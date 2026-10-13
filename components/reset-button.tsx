@@ -1,20 +1,20 @@
 "use client";
 
-import { resetDemoAction } from "@/lib/actions";
+import { usePacket } from "./packet-provider";
 
 export function ResetButton() {
+  const { reset } = usePacket();
   return (
-    <form
-      action={resetDemoAction}
-      onSubmit={(event) => {
-        if (!window.confirm("Restore the seeded fleet? Campaigns and mappings from this session will be cleared.")) {
-          event.preventDefault();
+    <button
+      className="text-btn"
+      type="button"
+      onClick={() => {
+        if (window.confirm("Restore the seeded fleet? Campaigns and mappings in this browser will be cleared.")) {
+          reset();
         }
       }}
     >
-      <button className="text-btn" type="submit">
-        Reset demo data
-      </button>
-    </form>
+      Reset demo data
+    </button>
   );
 }

@@ -1,26 +1,40 @@
-import { NavLinks } from "./nav-links";
-import { ResetButton } from "./reset-button";
-import { setOperatorAction } from "@/lib/actions";
-import { OPERATORS } from "@/lib/constants";
-import { getOperator } from "@/lib/session";
-import { getDb } from "@/lib/store";
-import type { Operator } from "@/lib/types";
+"use client";
 
-export async function Shell({ children }: { children: React.ReactNode }) {
-  const operator = await getOperator();
-  const db = getDb();
+import Link from "next/link";
+import { NavLinks } from "./nav-links";
+import { Notice } from "./notice";
+import { ResetButton } from "./reset-button";
+import { usePacket } from "./packet-provider";
+import { OPERATORS } from "@/lib/constants";
+import { asset, paths } from "@/lib/paths";
+
+export function Shell({ children }: { children: React.ReactNode }) {
+  const { ready, db, operatorId, notice, setOperator } = usePacket();
   const pending = db.tags.filter((tag) => tag.status === "pending" || tag.status === "drift").length;
+  const operator = OPERATORS.find((item) => item.id === operatorId) ?? OPERATORS[0];
 
   return (
     <div className="shell">
       <header className="topbar">
-        <a className="brand" href="/">
-          <img src="/logo.png" alt="" />
+        <Link className="brand" href={paths.home}>
+          <img src={asset("/logo.png")} alt="" />
           Packet.io
-        </a>
+        </Link>
         <div className="topbar__meta">
           <span className="quiet">Read-only on the control network</span>
-          <OperatorSwitch current={operator} />
+          <div className="who" role="group" aria-label="Acting operator">
+            {OPERATORS.map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={item.id === operator.id ? "is-on" : undefined}
+                title={item.role}
+                onClick={() => setOperator(item.id)}
+              >
+                {item.name}
+              </button>
+            ))}
+          </div>
         </div>
       </header>
       <div className="body">
@@ -31,24 +45,18 @@ export async function Shell({ children }: { children: React.ReactNode }) {
           </div>
         </nav>
         <main className="main">
-          <div className="content">{children}</div>
+          <div className="content">
+            {ready ? (
+              <>
+                <Notice notice={notice} />
+                {children}
+              </>
+            ) : (
+              <p className="muted">Loading the fleet…</p>
+            )}
+          </div>
         </main>
       </div>
-    </div>
-  );
-}
-
-function OperatorSwitch({ current }: { current: Operator }) {
-  return (
-    <div className="who" role="group" aria-label="Acting operator">
-      {OPERATORS.map((operator) => (
-        <form action={setOperatorAction} key={operator.id}>
-          <input type="hidden" name="id" value={operator.id} />
-          <button type="submit" className={operator.id === current.id ? "is-on" : undefined} title={operator.role}>
-            {operator.name}
-          </button>
-        </form>
-      ))}
     </div>
   );
 }

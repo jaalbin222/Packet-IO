@@ -1,4 +1,5 @@
 import { HIGH_CONFIDENCE } from "./constants";
+import { paths } from "./paths";
 import type {
   Asset,
   AssetClass,
@@ -91,7 +92,7 @@ export function bulkApprove(db: Db, siteId: string, actor: string, at: string): 
   bumpSite(db, siteId);
   const version = db.sites.find((item) => item.id === siteId)?.modelVersion;
   const message = `Approved ${chosen.length} high-confidence tag${chosen.length === 1 ? "" : "s"} into ${site.name} model v${version}.`;
-  audit(db, at, actor, message, `/sites/${siteId}`);
+  audit(db, at, actor, message, paths.site(siteId));
   return ok(message);
 }
 
@@ -139,7 +140,7 @@ export function reviewTag(
     tag.reviewedBy = actor;
     tag.reviewedAt = at;
     const message = `Rejected ${tag.rawName}. It stays out of the canonical model.`;
-    audit(db, at, actor, message, `/sites/${tag.siteId}`);
+    audit(db, at, actor, message, paths.site(tag.siteId));
     return ok(message);
   }
 
@@ -147,7 +148,7 @@ export function reviewTag(
     applyMapping(tag, actor, at, "proposal");
     bumpSite(db, tag.siteId);
     const message = `Accepted ${tag.rawName} as ${tag.mapping?.hierarchy}. Model is now v${site.modelVersion}.`;
-    audit(db, at, actor, message, `/sites/${tag.siteId}`);
+    audit(db, at, actor, message, paths.site(tag.siteId));
     return ok(message);
   }
 
@@ -162,7 +163,7 @@ export function reviewTag(
   applyMapping(tag, actor, at, "corrected", { assetId: asset.id, unit, role, hierarchy });
   bumpSite(db, tag.siteId);
   const message = `Corrected ${tag.rawName} to ${hierarchy} (${unit}). Model is now v${site.modelVersion}.`;
-  audit(db, at, actor, message, `/model?asset=${asset.id}`);
+  audit(db, at, actor, message, paths.model({ asset: asset.id }));
   return ok(message);
 }
 
@@ -285,7 +286,7 @@ export function createDeployment(
   };
   db.deployments.unshift(deployment);
   const message = `Opened ${app.name} ${version} for ${where}. Waiting on a second approver.`;
-  audit(db, at, actor, message, `/deployments/${id}`);
+  audit(db, at, actor, message, paths.deployment(id));
   return { ...ok(message), id };
 }
 
@@ -307,7 +308,7 @@ export function approveDeployment(db: Db, id: string, actor: string, at: string)
   dep.approvals.push({ by: actor, at });
   const message = `Approved ${dep.appName} ${dep.version}. Change control is ${dep.approvals.length}/${dep.approvalsRequired}.`;
   dep.events.push({ at, actor, message: "Approved the campaign." });
-  audit(db, at, actor, message, `/deployments/${id}`);
+  audit(db, at, actor, message, paths.deployment(id));
   return ok(message);
 }
 
@@ -330,7 +331,7 @@ function rollback(db: Db, dep: Deployment, actor: string, at: string, reason: st
   dep.stage = "rolled_back";
   dep.blocked = false;
   dep.events.push({ at, actor, message: reason });
-  audit(db, at, actor, `${dep.appName} ${dep.version}: ${reason}`, `/deployments/${dep.id}`);
+  audit(db, at, actor, `${dep.appName} ${dep.version}: ${reason}`, paths.deployment(dep.id));
 }
 
 function promote(db: Db, dep: Deployment, wave: Wave): { failed?: string; queued: number; passed: number } {
@@ -382,7 +383,7 @@ export function advanceDeployment(db: Db, id: string, actor: string, at: string)
     dep.stage = "build";
     const message = "Build signed. The artifact is ready for canary.";
     dep.events.push({ at, actor, message });
-    audit(db, at, actor, `${dep.appName} ${dep.version}: ${message}`, `/deployments/${dep.id}`);
+    audit(db, at, actor, `${dep.appName} ${dep.version}: ${message}`, paths.deployment(dep.id));
     return ok(message);
   }
 
@@ -396,7 +397,7 @@ export function advanceDeployment(db: Db, id: string, actor: string, at: string)
       dep.stage = "complete";
       const message = "Fleet rollout finished. Offline nodes stay queued until they reconnect.";
       dep.events.push({ at, actor, message });
-      audit(db, at, actor, `${dep.appName} ${dep.version}: ${message}`, `/deployments/${dep.id}`);
+      audit(db, at, actor, `${dep.appName} ${dep.version}: ${message}`, paths.deployment(dep.id));
       return ok(message);
     }
     const upcoming = nextWave(dep, current);
@@ -404,7 +405,7 @@ export function advanceDeployment(db: Db, id: string, actor: string, at: string)
       dep.stage = "complete";
       const message = "Rollout finished. Every reached gateway is healthy.";
       dep.events.push({ at, actor, message });
-      audit(db, at, actor, `${dep.appName} ${dep.version}: ${message}`, `/deployments/${dep.id}`);
+      audit(db, at, actor, `${dep.appName} ${dep.version}: ${message}`, paths.deployment(dep.id));
       return ok(message);
     }
     return enterWave(db, dep, upcoming, actor, at);
@@ -432,14 +433,14 @@ function enterWave(db: Db, dep: Deployment, wave: Wave | "complete", actor: stri
     dep.blocked = true;
     const message = `${reason} Promotion is blocked until you roll it back.`;
     dep.events.push({ at, actor, message });
-    audit(db, at, actor, `${dep.appName} ${dep.version}: ${message}`, `/deployments/${dep.id}`);
+    audit(db, at, actor, `${dep.appName} ${dep.version}: ${message}`, paths.deployment(dep.id));
     return warn(message);
   }
   const queued =
     result.queued > 0 ? ` ${result.queued} offline gateway${result.queued === 1 ? "" : "s"} queued.` : "";
   const message = `${wave === "wave1" ? "Wave 1" : wave === "canary" ? "Canary" : "Fleet"} promoted.${queued}`;
   dep.events.push({ at, actor, message });
-  audit(db, at, actor, `${dep.appName} ${dep.version}: ${message}`, `/deployments/${dep.id}`);
+  audit(db, at, actor, `${dep.appName} ${dep.version}: ${message}`, paths.deployment(dep.id));
   return ok(message.trim());
 }
 
@@ -494,6 +495,6 @@ export function reconnectNode(db: Db, nodeId: string, actor: string, at: string)
       ? ` ${converged} queued deployment${converged === 1 ? "" : "s"} converged.`
       : " No queued deployment was waiting.";
   const message = `${node.name} is back online.${extra}`;
-  audit(db, at, actor, message, `/fleet/${node.id}`);
+  audit(db, at, actor, message, paths.node(node.id));
   return ok(message);
 }

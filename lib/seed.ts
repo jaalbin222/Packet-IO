@@ -1,3 +1,4 @@
+import { paths } from "./paths";
 import type { Db, Deployment, Tag } from "./types";
 
 const at = {
@@ -918,28 +919,28 @@ export function createSeed(): Db {
         at: at.d5,
         actor: "j.okafor",
         message: "Opened bess.imbalance_monitor 1.0.0 for North Ridge battery racks.",
-        href: "/deployments/dep-bess",
+        href: paths.deployment("dep-bess"),
       },
       {
         id: "aud-2",
         at: "2026-10-11T17:21:00.000Z",
         actor: "j.okafor",
         message: "Canary of alarm.correlator 2.1.0 passed on cr-gw-01.",
-        href: "/deployments/dep-alarm",
+        href: paths.deployment("dep-alarm"),
       },
       {
         id: "aud-3",
         at: at.d3,
         actor: "j.okafor",
         message: "North Ridge rack 04 state of health flagged for drift.",
-        href: "/sites/north-ridge",
+        href: paths.site("north-ridge"),
       },
       {
         id: "aud-4",
         at: "2026-10-03T14:12:00.000Z",
         actor: "a.chen",
         message: "inverter.fault_predictor 1.4.2 finished rollout at Chisholm Ridge.",
-        href: "/deployments/dep-inverter",
+        href: paths.deployment("dep-inverter"),
       },
     ],
   };

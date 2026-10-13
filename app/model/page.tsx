@@ -1,21 +1,29 @@
+"use client";
+
+import { Suspense } from "react";
 import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { usePacket } from "@/components/packet-provider";
 import { operatorName } from "@/lib/constants";
 import { formatWhen } from "@/lib/format";
-import { getDb } from "@/lib/store";
+import { paths } from "@/lib/paths";
 import type { Asset } from "@/lib/types";
 
-export const metadata = { title: "Canonical model" };
+export default function ModelPage() {
+  return (
+    <Suspense fallback={<p className="muted">Loading model…</p>}>
+      <ModelView />
+    </Suspense>
+  );
+}
 
-export default async function ModelPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ asset?: string; site?: string }>;
-}) {
-  const sp = await searchParams;
-  const db = getDb();
+function ModelView() {
+  const params = useSearchParams();
+  const { db } = usePacket();
   const accepted = db.tags.filter((tag) => tag.status === "accepted" && tag.mapping);
-  const first = accepted.find((tag) => (sp.site ? tag.siteId === sp.site : true));
-  const activeId = sp.asset ?? first?.mapping?.assetId ?? db.assets[0]?.id;
+  const siteFilter = params.get("site") ?? undefined;
+  const first = accepted.find((tag) => (siteFilter ? tag.siteId === siteFilter : true));
+  const activeId = params.get("asset") ?? first?.mapping?.assetId ?? db.assets[0]?.id;
   const asset = db.assets.find((item) => item.id === activeId) ?? db.assets[0];
   const site = db.sites.find((item) => item.id === asset?.siteId);
   const tags = accepted.filter((tag) => tag.mapping?.assetId === asset?.id);
@@ -56,8 +64,7 @@ export default async function ModelPage({
             </p>
             {tags.length === 0 ? (
               <p className="empty">
-                No confirmed tags on this asset.{" "}
-                <Link href={`/sites/${site.id}`}>Review proposals</Link>
+                No confirmed tags on this asset. <Link href={paths.site(site.id)}>Review proposals</Link>
               </p>
             ) : (
               <div className="table-wrap">
@@ -74,7 +81,7 @@ export default async function ModelPage({
                     {tags.map((tag) => (
                       <tr key={tag.id}>
                         <td>
-                          <Link href={`/sites/${tag.siteId}?tag=${tag.id}`}>
+                          <Link href={paths.site(tag.siteId, tag.id)}>
                             <code>{tag.rawName}</code>
                           </Link>
                         </td>
@@ -119,7 +126,7 @@ function AssetTree({
     return (
       <li key={asset.id}>
         <Link
-          href={`/model?asset=${asset.id}`}
+          href={paths.model({ asset: asset.id })}
           className={asset.id === activeId ? "is-active" : undefined}
           style={{ paddingLeft: 10 + depth * 14 }}
         >

@@ -1,19 +1,13 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { Notice } from "@/components/notice";
-import { SubmitButton } from "@/components/submit-button";
-import { advanceDeploymentAction, approveDeploymentAction, rollbackDeploymentAction } from "@/lib/actions";
-import { operatorName } from "@/lib/constants";
-import { advanceLabel, formatWhen, readNotice, stageLabel, stepState } from "@/lib/format";
-import { getOperator } from "@/lib/session";
-import { getDb } from "@/lib/store";
-import type { Wave } from "@/lib/types";
+"use client";
 
-export async function generateMetadata({ params }: { params: Promise<{ id: string }> }) {
-  const { id } = await params;
-  const campaign = getDb().deployments.find((item) => item.id === id);
-  return { title: campaign ? `${campaign.appName} ${campaign.version}` : "Campaign" };
-}
+import { Suspense } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { usePacket } from "@/components/packet-provider";
+import { OPERATORS, operatorName } from "@/lib/constants";
+import { advanceLabel, formatWhen, stageLabel, stepState } from "@/lib/format";
+import { paths } from "@/lib/paths";
+import type { Wave } from "@/lib/types";
 
 const steps = [
   ["build", "Build"],
@@ -22,26 +16,32 @@ const steps = [
   ["fleet", "Fleet"],
 ] as const;
 
-export default async function DeploymentPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ notice?: string; tone?: string }>;
-}) {
-  const { id } = await params;
-  const notice = readNotice(await searchParams);
-  const operator = await getOperator();
-  const db = getDb();
+export default function DeploymentViewPage() {
+  return (
+    <Suspense fallback={<p className="muted">Loading campaign…</p>}>
+      <DeploymentView />
+    </Suspense>
+  );
+}
+
+function DeploymentView() {
+  const id = useSearchParams().get("id") ?? "";
+  const { db, operatorId, approve, advance, rollback } = usePacket();
   const campaign = db.deployments.find((item) => item.id === id);
-  if (!campaign) notFound();
+  const operator = OPERATORS.find((item) => item.id === operatorId) ?? OPERATORS[0];
+  if (!campaign) {
+    return (
+      <p className="lede">
+        That campaign is not in this browser’s fleet. <Link href={paths.deployments}>Back to campaigns</Link>
+      </p>
+    );
+  }
   const signed = campaign.approvals.some((approval) => approval.by === operator.id);
   const label = advanceLabel(campaign);
   const sites = campaign.siteIds.map((siteId) => db.sites.find((site) => site.id === siteId)?.name).filter(Boolean);
 
   return (
     <>
-      <Notice notice={notice} />
       <header className="page-head">
         <p className="eyebrow">
           <b>Campaign</b>
@@ -72,7 +72,7 @@ export default async function DeploymentPage({
           {campaign.nodes.map((target) => {
             const node = db.nodes.find((item) => item.id === target.nodeId);
             return (
-              <Link key={target.nodeId} href={`/fleet/${target.nodeId}`} className={`node-tile is-${target.status}`}>
+              <Link key={target.nodeId} href={paths.node(target.nodeId)} className={`node-tile is-${target.status}`}>
                 <b>{node?.name ?? target.nodeId}</b>
                 <span>
                   {waveName(target.wave)} · {target.status}
@@ -97,24 +97,21 @@ export default async function DeploymentPage({
       </section>
       <div className="actions">
         {!signed && campaign.approvals.length < campaign.approvalsRequired && campaign.stage !== "rolled_back" && campaign.stage !== "complete" ? (
-          <form action={approveDeploymentAction}>
-            <input type="hidden" name="id" value={campaign.id} />
-            <SubmitButton>Approve as {operator.name}</SubmitButton>
-          </form>
+          <button className="btn btn--primary" type="button" onClick={() => approve(campaign.id)}>
+            Approve as {operator.name}
+          </button>
         ) : null}
         {label ? (
-          <form action={advanceDeploymentAction}>
-            <input type="hidden" name="id" value={campaign.id} />
-            <SubmitButton>{label}</SubmitButton>
-          </form>
+          <button className="btn btn--primary" type="button" onClick={() => advance(campaign.id)}>
+            {label}
+          </button>
         ) : null}
         {campaign.stage !== "rolled_back" ? (
-          <form action={rollbackDeploymentAction}>
-            <input type="hidden" name="id" value={campaign.id} />
-            <SubmitButton variant="danger">Roll back</SubmitButton>
-          </form>
+          <button className="btn btn--danger" type="button" onClick={() => rollback(campaign.id)}>
+            Roll back
+          </button>
         ) : null}
-        <Link className="btn btn--ghost" href="/deployments">
+        <Link className="btn btn--ghost" href={paths.deployments}>
           All campaigns
         </Link>
       </div>

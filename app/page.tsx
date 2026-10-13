@@ -1,16 +1,13 @@
-import Link from "next/link";
-import { Notice } from "@/components/notice";
-import { operatorName } from "@/lib/constants";
-import { formatWhen, readNotice, stageLabel } from "@/lib/format";
-import { getDb } from "@/lib/store";
+"use client";
 
-export default async function OverviewPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ notice?: string; tone?: string }>;
-}) {
-  const notice = readNotice(await searchParams);
-  const db = getDb();
+import Link from "next/link";
+import { usePacket } from "@/components/packet-provider";
+import { operatorName } from "@/lib/constants";
+import { formatWhen, stageLabel } from "@/lib/format";
+import { paths } from "@/lib/paths";
+
+export default function OverviewPage() {
+  const { db } = usePacket();
   const online = db.nodes.filter((node) => node.connectivity === "online").length;
   const degraded = db.nodes.filter((node) => node.connectivity === "degraded").length;
   const offline = db.nodes.filter((node) => node.connectivity === "offline").length;
@@ -24,7 +21,6 @@ export default async function OverviewPage({
 
   return (
     <>
-      <Notice notice={notice} />
       <header className="page-head">
         <p className="eyebrow">
           <b>Fleet</b>Control plane
@@ -63,14 +59,14 @@ export default async function OverviewPage({
         <section className="panel">
           <div className="panel__head">
             <h2>Sites</h2>
-            <Link href="/sites">All sites</Link>
+            <Link href={paths.sites}>All sites</Link>
           </div>
           {db.sites.map((site) => {
             const waiting = db.tags.filter((tag) => tag.siteId === site.id && (tag.status === "pending" || tag.status === "drift")).length;
             const nodes = db.nodes.filter((node) => node.siteId === site.id);
             const up = nodes.filter((node) => node.connectivity === "online").length;
             return (
-              <Link key={site.id} href={`/sites/${site.id}`} className="list-link">
+              <Link key={site.id} href={paths.site(site.id)} className="list-link">
                 <span>
                   <strong>{site.name}</strong>
                   <br />
@@ -89,11 +85,11 @@ export default async function OverviewPage({
         <section className="panel">
           <div className="panel__head">
             <h2>Open campaigns</h2>
-            <Link href="/deployments">All</Link>
+            <Link href={paths.deployments}>All</Link>
           </div>
           {open.length === 0 ? <p className="empty">No campaign is in flight.</p> : null}
           {open.map((campaign) => (
-            <Link key={campaign.id} href={`/deployments/${campaign.id}`} className="list-link">
+            <Link key={campaign.id} href={paths.deployment(campaign.id)} className="list-link">
               <span>
                 <strong>{campaign.appName}</strong>
                 <br />

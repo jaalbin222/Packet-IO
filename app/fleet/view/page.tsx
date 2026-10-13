@@ -1,29 +1,31 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { Notice } from "@/components/notice";
-import { SubmitButton } from "@/components/submit-button";
-import { reconnectNodeAction } from "@/lib/actions";
-import { certTone, formatDay, readNotice, stageLabel } from "@/lib/format";
-import { getDb } from "@/lib/store";
+"use client";
 
-export async function generateMetadata({ params }: { params: Promise<{ nodeId: string }> }) {
-  const { nodeId } = await params;
-  const node = getDb().nodes.find((item) => item.id === nodeId);
-  return { title: node?.name ?? "Gateway" };
+import { Suspense } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { usePacket } from "@/components/packet-provider";
+import { certTone, formatDay, stageLabel } from "@/lib/format";
+import { paths } from "@/lib/paths";
+
+export default function NodeViewPage() {
+  return (
+    <Suspense fallback={<p className="muted">Loading gateway…</p>}>
+      <NodeView />
+    </Suspense>
+  );
 }
 
-export default async function NodePage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ nodeId: string }>;
-  searchParams: Promise<{ notice?: string; tone?: string }>;
-}) {
-  const { nodeId } = await params;
-  const notice = readNotice(await searchParams);
-  const db = getDb();
+function NodeView() {
+  const nodeId = useSearchParams().get("node") ?? "";
+  const { db, reconnect } = usePacket();
   const node = db.nodes.find((item) => item.id === nodeId);
-  if (!node) notFound();
+  if (!node) {
+    return (
+      <p className="lede">
+        That gateway is not in this browser’s fleet. <Link href={paths.fleet}>Back to the fleet</Link>
+      </p>
+    );
+  }
   const site = db.sites.find((item) => item.id === node.siteId);
   const behind = site && site.modelVersion !== node.modelVersion;
   const queued = db.deployments.flatMap((deployment) =>
@@ -35,7 +37,6 @@ export default async function NodePage({
 
   return (
     <>
-      <Notice notice={notice} />
       <header className="page-head">
         <p className="eyebrow">
           <b>Module 02</b>On-site runtime
@@ -51,10 +52,9 @@ export default async function NodePage({
             </p>
           </div>
           {needsLink ? (
-            <form action={reconnectNodeAction}>
-              <input type="hidden" name="id" value={node.id} />
-              <SubmitButton>{node.connectivity === "offline" ? "Mark reconnected" : "Restore link"}</SubmitButton>
-            </form>
+            <button className="btn btn--primary" type="button" onClick={() => reconnect(node.id)}>
+              {node.connectivity === "offline" ? "Mark reconnected" : "Restore link"}
+            </button>
           ) : null}
         </div>
       </header>
@@ -109,7 +109,7 @@ export default async function NodePage({
           </div>
           {behind ? (
             <p className="actions">
-              <Link className="btn btn--ghost" href="/deployments/new">
+              <Link className="btn btn--ghost" href={paths.newDeployment}>
                 Publish the model
               </Link>
             </p>
@@ -121,7 +121,7 @@ export default async function NodePage({
           <h2 className="subhead">Queued until this gateway reconnects</h2>
           <div className="cards">
             {queued.map(({ deployment }) => (
-              <Link key={deployment.id} href={`/deployments/${deployment.id}`} className="card campaign">
+              <Link key={deployment.id} href={paths.deployment(deployment.id)} className="card campaign">
                 <span>
                   <strong>{deployment.appName}</strong>
                   <p>

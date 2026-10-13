@@ -1,11 +1,11 @@
-import { DeploymentForm } from "@/components/deployment-form";
-import { siteAssetClasses } from "@/lib/domain";
-import { getDb } from "@/lib/store";
+"use client";
 
-export const metadata = { title: "New campaign" };
+import { DeploymentForm } from "@/components/deployment-form";
+import { usePacket } from "@/components/packet-provider";
+import { siteAssetClasses } from "@/lib/domain";
 
 export default function NewDeploymentPage() {
-  const db = getDb();
+  const { db } = usePacket();
   const sites = db.sites.map((site) => ({
     id: site.id,
     name: site.name,

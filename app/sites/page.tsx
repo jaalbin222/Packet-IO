@@ -1,10 +1,11 @@
-import Link from "next/link";
-import { getDb } from "@/lib/store";
+"use client";
 
-export const metadata = { title: "Sites" };
+import Link from "next/link";
+import { usePacket } from "@/components/packet-provider";
+import { paths } from "@/lib/paths";
 
 export default function SitesPage() {
-  const db = getDb();
+  const { db } = usePacket();
   return (
     <>
       <header className="page-head">
@@ -34,7 +35,7 @@ export default function SitesPage() {
               return (
                 <tr key={site.id}>
                   <td>
-                    <Link href={`/sites/${site.id}`}>
+                    <Link href={paths.site(site.id)}>
                       <strong>{site.name}</strong>
                     </Link>
                     <div className="muted">{site.region}</div>

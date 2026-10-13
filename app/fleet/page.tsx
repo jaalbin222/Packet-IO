@@ -1,11 +1,12 @@
-import Link from "next/link";
-import { certTone, formatDay } from "@/lib/format";
-import { getDb } from "@/lib/store";
+"use client";
 
-export const metadata = { title: "Fleet" };
+import Link from "next/link";
+import { usePacket } from "@/components/packet-provider";
+import { certTone, formatDay } from "@/lib/format";
+import { paths } from "@/lib/paths";
 
 export default function FleetPage() {
-  const db = getDb();
+  const { db } = usePacket();
   return (
     <>
       <header className="page-head">
@@ -38,7 +39,7 @@ export default function FleetPage() {
               return (
                 <tr key={node.id}>
                   <td>
-                    <Link href={`/fleet/${node.id}`}>
+                    <Link href={paths.node(node.id)}>
                       <strong>{node.name}</strong>
                     </Link>
                   </td>

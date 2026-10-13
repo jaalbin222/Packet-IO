@@ -16,7 +16,9 @@ export function NavLinks({ pending }: { pending: number }) {
   return (
     <>
       {items.map((item) => {
-        const active = item.href === "/" ? path === "/" : path === item.href || path.startsWith(`${item.href}/`);
+        const current = path.endsWith("/") && path !== "/" ? path.slice(0, -1) : path;
+        const target = item.href.endsWith("/") && item.href !== "/" ? item.href.slice(0, -1) : item.href;
+        const active = target === "/" ? current === "/" : current === target || current.startsWith(`${target}/`);
         return (
           <Link key={item.href} href={item.href} className={active ? "is-active" : undefined} aria-current={active ? "page" : undefined}>
             {item.label}

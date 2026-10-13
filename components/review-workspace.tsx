@@ -1,11 +1,10 @@
 "use client";
 
 import { useMemo, useState } from "react";
-import { bulkApproveAction, reviewTagAction } from "@/lib/actions";
 import { HIGH_CONFIDENCE, operatorName } from "@/lib/constants";
 import type { Asset, Device, Tag, TagStatus } from "@/lib/types";
 import { Confidence } from "./confidence";
-import { SubmitButton } from "./submit-button";
+import { usePacket } from "./packet-provider";
 
 type Filter = "all" | "review" | "high" | "model" | "rejected";
 
@@ -40,6 +39,7 @@ export function ReviewWorkspace({
   devices: Device[];
   initialTagId?: string;
 }) {
+  const { bulkApprove, review } = usePacket();
   const [filter, setFilter] = useState<Filter>("all");
   const [selectedId, setSelectedId] = useState<string | null>(initialTagId ?? null);
   const [correcting, setCorrecting] = useState(false);
@@ -67,12 +67,9 @@ export function ReviewWorkspace({
               </button>
             ))}
           </div>
-          <form action={bulkApproveAction}>
-            <input type="hidden" name="siteId" value={siteId} />
-            <SubmitButton disabled={high === 0} pendingLabel="Approving…">
-              {high === 0 ? "No high-confidence tags" : `Approve ${high} high-confidence`}
-            </SubmitButton>
-          </form>
+          <button className="btn btn--primary" type="button" disabled={high === 0} onClick={() => bulkApprove(siteId)}>
+            {high === 0 ? "No high-confidence tags" : `Approve ${high} high-confidence`}
+          </button>
         </div>
         <div className="table-wrap">
           <table>
@@ -121,13 +118,13 @@ export function ReviewWorkspace({
         {selected ? (
           <TagDrawer
             tag={selected}
-            siteId={siteId}
             assets={assets.filter((asset) => asset.siteId === siteId)}
             device={devices.find((device) => device.id === selected.deviceId)}
             assetName={assetName(selected.mapping?.assetId ?? selected.proposal.assetId)}
             correcting={correcting}
             onCorrect={() => setCorrecting(true)}
             onCancel={() => setCorrecting(false)}
+            onReview={review}
           />
         ) : (
           <p>Select a tag to see why it was proposed.</p>
@@ -139,22 +136,22 @@ export function ReviewWorkspace({
 
 function TagDrawer({
   tag,
-  siteId,
   assets,
   device,
   assetName,
   correcting,
   onCorrect,
   onCancel,
+  onReview,
 }: {
   tag: Tag;
-  siteId: string;
   assets: Asset[];
   device?: Device;
   assetName: string;
   correcting: boolean;
   onCorrect: () => void;
   onCancel: () => void;
+  onReview: (input: { tagId: string; decision: "accept" | "correct" | "reject"; assetId?: string; unit?: string; role?: string }) => { ok: boolean };
 }) {
   const meaning = tag.status === "accepted" && tag.mapping ? tag.mapping : tag.proposal;
   const closed = tag.status === "accepted";
@@ -183,10 +180,20 @@ function TagDrawer({
         </p>
       ) : null}
       {correcting ? (
-        <form action={reviewTagAction}>
-          <input type="hidden" name="tagId" value={tag.id} />
-          <input type="hidden" name="siteId" value={siteId} />
-          <input type="hidden" name="decision" value="correct" />
+        <form
+          onSubmit={(event) => {
+            event.preventDefault();
+            const data = new FormData(event.currentTarget);
+            const result = onReview({
+              tagId: tag.id,
+              decision: "correct",
+              assetId: String(data.get("assetId") ?? ""),
+              role: String(data.get("role") ?? ""),
+              unit: String(data.get("unit") ?? ""),
+            });
+            if (result.ok) onCancel();
+          }}
+        >
           <label className="field">
             <span>Asset</span>
             <select name="assetId" defaultValue={tag.proposal.assetId}>
@@ -206,7 +213,7 @@ function TagDrawer({
             <input name="unit" defaultValue={tag.proposal.unit} required />
           </label>
           <div className="actions">
-            <SubmitButton>Save correction</SubmitButton>
+            <button className="btn btn--primary" type="submit">Save correction</button>
             <button className="btn btn--ghost" type="button" onClick={onCancel}>
               Cancel
             </button>
@@ -214,21 +221,15 @@ function TagDrawer({
         </form>
       ) : closed ? null : (
         <div className="actions">
-          <form action={reviewTagAction}>
-            <input type="hidden" name="tagId" value={tag.id} />
-            <input type="hidden" name="siteId" value={siteId} />
-            <input type="hidden" name="decision" value="accept" />
-            <SubmitButton>{tag.status === "drift" ? "Reaffirm mapping" : "Accept proposal"}</SubmitButton>
-          </form>
+          <button className="btn btn--primary" type="button" onClick={() => onReview({ tagId: tag.id, decision: "accept" })}>
+            {tag.status === "drift" ? "Reaffirm mapping" : "Accept proposal"}
+          </button>
           <button className="btn btn--ghost" type="button" onClick={onCorrect}>
             Correct
           </button>
-          <form action={reviewTagAction}>
-            <input type="hidden" name="tagId" value={tag.id} />
-            <input type="hidden" name="siteId" value={siteId} />
-            <input type="hidden" name="decision" value="reject" />
-            <SubmitButton variant="danger">Reject</SubmitButton>
-          </form>
+          <button className="btn btn--danger" type="button" onClick={() => onReview({ tagId: tag.id, decision: "reject" })}>
+            Reject
+          </button>
         </div>
       )}
     </>

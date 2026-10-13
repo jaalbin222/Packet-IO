@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Inter_Tight, JetBrains_Mono } from "next/font/google";
+import { PacketProvider } from "@/components/packet-provider";
 import { Shell } from "@/components/shell";
 import "./globals.css";
 
@@ -16,14 +17,13 @@ export const metadata: Metadata = {
   icons: { icon: "/logo.png" },
 };
 
-export const dynamic = "force-dynamic";
-export const runtime = "nodejs";
-
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="en">
       <body className={`${inter.variable} ${tight.variable} ${mono.variable}`}>
-        <Shell>{children}</Shell>
+        <PacketProvider>
+          <Shell>{children}</Shell>
+        </PacketProvider>
       </body>
     </html>
   );

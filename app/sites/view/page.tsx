@@ -1,37 +1,41 @@
-import Link from "next/link";
-import { notFound } from "next/navigation";
-import { Notice } from "@/components/notice";
-import { ReviewWorkspace } from "@/components/review-workspace";
-import { readNotice } from "@/lib/format";
-import { getDb } from "@/lib/store";
+"use client";
 
-export async function generateMetadata({ params }: { params: Promise<{ siteId: string }> }) {
-  const { siteId } = await params;
-  const site = getDb().sites.find((item) => item.id === siteId);
-  return { title: site?.name ?? "Site" };
+import { Suspense } from "react";
+import Link from "next/link";
+import { useSearchParams } from "next/navigation";
+import { ReviewWorkspace } from "@/components/review-workspace";
+import { usePacket } from "@/components/packet-provider";
+import { paths } from "@/lib/paths";
+
+export default function SiteViewPage() {
+  return (
+    <Suspense fallback={<p className="muted">Loading site…</p>}>
+      <SiteView />
+    </Suspense>
+  );
 }
 
-export default async function SitePage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ siteId: string }>;
-  searchParams: Promise<{ notice?: string; tone?: string; tag?: string }>;
-}) {
-  const { siteId } = await params;
-  const sp = await searchParams;
-  const db = getDb();
+function SiteView() {
+  const params = useSearchParams();
+  const siteId = params.get("site") ?? "";
+  const tag = params.get("tag") ?? undefined;
+  const { db } = usePacket();
   const site = db.sites.find((item) => item.id === siteId);
-  if (!site) notFound();
-  const tags = db.tags.filter((tag) => tag.siteId === site.id);
+  if (!site) {
+    return (
+      <p className="lede">
+        That site is not in this browser’s fleet. <Link href={paths.sites}>Back to sites</Link>
+      </p>
+    );
+  }
+  const tags = db.tags.filter((item) => item.siteId === site.id);
   const devices = db.devices.filter((device) => device.siteId === site.id);
   const assets = db.assets.filter((asset) => asset.siteId === site.id);
-  const accepted = tags.filter((tag) => tag.status === "accepted").length;
-  const review = tags.filter((tag) => tag.status === "pending" || tag.status === "drift").length;
+  const accepted = tags.filter((item) => item.status === "accepted").length;
+  const review = tags.filter((item) => item.status === "pending" || item.status === "drift").length;
 
   return (
     <>
-      <Notice notice={readNotice(sp)} />
       <header className="page-head">
         <p className="eyebrow">
           <b>Module 01</b>Data unification
@@ -46,7 +50,7 @@ export default async function SitePage({
               {site.kind} · {site.capacity} · {site.region}. Discovered from {site.scada} and {site.historian}. High-confidence proposals can be approved together. Anything under 0.90 stays with a person, with the reasoning shown.
             </p>
           </div>
-          <Link className="btn btn--ghost" href={`/model?site=${site.id}`}>
+          <Link className="btn btn--ghost" href={paths.model({ site: site.id })}>
             Open model
           </Link>
         </div>
@@ -60,7 +64,7 @@ export default async function SitePage({
       <h2 className="subhead">Discovered devices</h2>
       <div className="devices">
         {devices.map((device) => {
-          const count = tags.filter((tag) => tag.deviceId === device.id).length;
+          const count = tags.filter((item) => item.deviceId === device.id).length;
           return (
             <article key={device.id} className="card device">
               <span className="label">{device.protocol}</span>
@@ -73,14 +77,7 @@ export default async function SitePage({
         })}
       </div>
       <h2 className="subhead">Map and contextualize</h2>
-      <ReviewWorkspace
-        key={`${sp.tag ?? ""}-${sp.notice ?? ""}`}
-        siteId={site.id}
-        tags={tags}
-        assets={assets}
-        devices={devices}
-        initialTagId={sp.tag}
-      />
+      <ReviewWorkspace siteId={site.id} tags={tags} assets={assets} devices={devices} initialTagId={tag} />
     </>
   );
 }

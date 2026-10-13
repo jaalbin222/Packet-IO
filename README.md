@@ -6,6 +6,8 @@ A tag like `INV3_ACPWR_L1` carries no unit, asset, or hierarchy. Mapping it by h
 
 This repository is a working console for that loop. It is seeded with a four-site design-partner fleet. Proposals, device discovery, and gateway telemetry are fixture data standing in for the on-site inference engine and runtime.
 
+The live demo is a static site: [https://jaalbin222.github.io/Packet-IO/](https://jaalbin222.github.io/Packet-IO/).
+
 ## Core flows
 
 1. **Map and contextualize.** Open a site, read why each raw tag was proposed, approve every high-confidence mapping in one action (0.90 and above), and accept, correct, or reject the rest. Drifted tags come back to the same queue. Each confirmation bumps that site’s canonical model version.
@@ -20,13 +22,13 @@ npm install
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000). No database or environment variables are required.
+Open [http://localhost:3000/Packet-IO/](http://localhost:3000/Packet-IO/). No database or environment variables are required. The `/Packet-IO` prefix matches the GitHub Pages project path.
 
 Two operators are built in, switched from the header: **J. Okafor** (fleet engineer) and **A. Chen** (change approver). Use both when a campaign needs a second signature.
 
-`npm test` checks the review, approval, rollout, rollback, and reconnect rules. `npm run build` produces the production build.
+`npm test` checks the review, approval, rollout, rollback, and reconnect rules. `npm run build` writes a static export to `out/`.
 
-Demo edits are stored in `data/state.json` on the machine running the app. **Reset demo data** in the sidebar restores the seed.
+Demo edits stay in this browser under the `packet-io.v1` localStorage key. **Reset demo data** in the sidebar restores the seed.
 
 ### A path through the seed
 
@@ -36,9 +38,11 @@ Demo edits are stored in `data/state.json` on the machine running the app. **Res
 
 ## Deploy
 
-The app is a Next.js project and deploys on Vercel with the default settings: install `npm install`, build `npm run build`, no environment variables.
+Pushing to `main` runs `.github/workflows/pages.yml`. The workflow installs dependencies, runs the domain tests, builds the static export, and deploys `out/` to GitHub Pages with the Pages actions. The site is served at [https://jaalbin222.github.io/Packet-IO/](https://jaalbin222.github.io/Packet-IO/).
 
-On Vercel the store stays in memory for the life of a server instance and reseeds on a cold start, because serverless instances do not have a durable disk. Locally, the same code writes `data/state.json`. A production deployment would replace `lib/store.ts` with Postgres or Turso; the domain rules in `lib/domain.ts` do not need to change.
+Pages has to use **GitHub Actions** as the source (repository Settings → Pages → Build and deployment → Source). The export sets `basePath` and `assetPrefix` to `/Packet-IO` so assets resolve on that project site.
+
+There is no server at runtime. Review decisions, approvals, and rollouts are applied in the browser and saved to localStorage.
 
 ## Implemented
 
@@ -57,8 +61,8 @@ On Vercel the store stays in memory for the life of a server instance and reseed
 - The headless gateway runtime, container sandbox, and local feature engineering. The runtime screen is the control-plane view of that node.
 - Certificate renewal, signed artifacts, and SSO. The header switches a demo operator; it is not authentication.
 - Closed-loop control. Setpoint campaigns are advisory and do not write to the control network.
-- Durable multi-tenant storage, natural-language queries, and fleet analytics.
+- Durable multi-tenant storage, natural-language queries, and fleet analytics. The demo keeps state in the browser.
 
 ## Stack
 
-Next.js (App Router), React, TypeScript. Domain state is a JSON document seeded in `lib/seed.ts`. No native database driver, so the app installs and runs with one command.
+Next.js (App Router, static export), React, TypeScript. Domain rules live in `lib/domain.ts` and the seed in `lib/seed.ts`. The console reads and writes that document through a client provider backed by localStorage.

@@ -1,10 +1,9 @@
 "use client";
 
-import { useActionState, useMemo, useState } from "react";
-import { createDeploymentAction } from "@/lib/actions";
+import { useMemo, useState } from "react";
 import { assignWaves } from "@/lib/domain";
-import type { CatalogApp, Connectivity, Result } from "@/lib/types";
-import { SubmitButton } from "./submit-button";
+import type { CatalogApp, Connectivity } from "@/lib/types";
+import { usePacket } from "./packet-provider";
 
 type SiteOption = {
   id: string;
@@ -30,7 +29,8 @@ export function DeploymentForm({
   sites: SiteOption[];
   nodes: NodeOption[];
 }) {
-  const [state, action] = useActionState(createDeploymentAction, null as Result | null);
+  const { openCampaign } = usePacket();
+  const [error, setError] = useState<string | null>(null);
   const [appId, setAppId] = useState(apps.find((app) => app.id === "alarm.correlator")?.id ?? apps[0]?.id ?? "");
   const app = apps.find((item) => item.id === appId) ?? apps[0];
   const [version, setVersion] = useState(app?.versions.at(-1) ?? "");
@@ -57,7 +57,19 @@ export function DeploymentForm({
   }
 
   return (
-    <form action={action} className="form-grid">
+    <form
+      className="form-grid"
+      onSubmit={(event) => {
+        event.preventDefault();
+        const result = openCampaign({
+          appId,
+          version,
+          siteIds: chosenSites.map((site) => site.id),
+          autoRollback,
+        });
+        setError(result.ok ? null : result.message);
+      }}
+    >
       <div className="panel" style={{ padding: 18 }}>
         <label className="field">
           <span>Application</span>
@@ -127,9 +139,11 @@ export function DeploymentForm({
           />
           Automatic rollback if a health check fails
         </label>
-        {state && !state.ok ? <p className="error">{state.message}</p> : null}
+        {error ? <p className="error">{error}</p> : null}
         <div className="actions">
-          <SubmitButton disabled={chosenSites.length === 0}>Open campaign</SubmitButton>
+          <button className="btn btn--primary" type="submit" disabled={chosenSites.length === 0}>
+            Open campaign
+          </button>
         </div>
         <p className="muted" style={{ marginTop: 12 }}>
           You are recorded as the author and first approver. A second operator has to sign before the build starts.
