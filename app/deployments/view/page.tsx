@@ -7,7 +7,7 @@ import { usePacket } from "@/components/packet-provider";
 import { OPERATORS, operatorName } from "@/lib/constants";
 import { advanceLabel, formatWhen, stageLabel, stepState } from "@/lib/format";
 import { paths } from "@/lib/paths";
-import type { Wave } from "@/lib/types";
+import type { DeploymentNode, DeploymentStage, GatewayNode, Wave } from "@/lib/types";
 
 const steps = [
   ["build", "Build"],
@@ -54,6 +54,7 @@ function DeploymentView() {
         </div>
         <p className="lede">{campaign.diff.summary}</p>
       </header>
+      <Rollout nodes={campaign.nodes} names={db.nodes} stage={campaign.stage} />
       <section className="panel" style={{ overflow: "hidden" }}>
         <ol className="rail" aria-label="Rollout stages">
           {steps.map(([step, name]) => {
@@ -140,6 +141,47 @@ function DeploymentView() {
           : ""}
       </p>
     </>
+  );
+}
+
+function Rollout({
+  nodes,
+  names,
+  stage,
+}: {
+  nodes: DeploymentNode[];
+  names: GatewayNode[];
+  stage: DeploymentStage;
+}) {
+  const waves: Wave[] = ["canary", "wave1", "fleet"];
+  return (
+    <section className="rollout" aria-label="Gateways in this rollout">
+      {waves.map((wave) => {
+        const group = nodes.filter((node) => node.wave === wave);
+        if (group.length === 0) return null;
+        return (
+          <div key={wave} className={`rollout__wave ${stage === wave ? "is-hot" : ""}`}>
+            <span>{wave === "wave1" ? "Wave 1" : wave}</span>
+            <div>
+              {group.map((target, index) => {
+                const node = names.find((item) => item.id === target.nodeId);
+                return (
+                  <Link
+                    key={target.nodeId}
+                    href={paths.node(target.nodeId)}
+                    className={`orb is-${target.status}`}
+                    style={{ animationDelay: `${index * 90}ms` }}
+                  >
+                    <b>{node?.name ?? target.nodeId}</b>
+                    <small>{target.status.replace("_", " ")}</small>
+                  </Link>
+                );
+              })}
+            </div>
+          </div>
+        );
+      })}
+    </section>
   );
 }
 

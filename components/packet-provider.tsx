@@ -12,6 +12,7 @@ import {
   reviewTag,
   rollbackDeployment,
 } from "@/lib/domain";
+import { clearDemoPath } from "@/lib/seen";
 import { paths } from "@/lib/paths";
 import { createSeed } from "@/lib/seed";
 import type { CreateDeploymentInput, Db, Result, ReviewDecision } from "@/lib/types";
@@ -103,6 +104,7 @@ export function PacketProvider({ children }: { children: React.ReactNode }) {
     reset() {
       const fresh = createSeed();
       write(fresh, OPERATORS[0].id);
+      clearDemoPath();
       setNotice({ text: "Demo fleet restored.", tone: "ok" });
       router.push(paths.home);
     },

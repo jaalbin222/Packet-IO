@@ -85,7 +85,7 @@ export function ReviewWorkspace({
               {visible.length === 0 ? (
                 <tr>
                   <td colSpan={4} className="empty">
-                    Nothing in this filter.
+                    Nothing matches. High-confidence tags can be approved together; the rest stay here until a person decides.
                   </td>
                 </tr>
               ) : (
@@ -158,11 +158,13 @@ function TagDrawer({
   return (
     <>
       <p className="label">{tag.protocol} · {tag.sample}{device ? ` · ${device.name}` : ""}</p>
-      <h2><code>{tag.rawName}</code></h2>
+      <div className="becomes">
+        <code>{tag.rawName}</code>
+        <span aria-hidden>→</span>
+        <strong>{meaning.hierarchy}</strong>
+      </div>
       <Confidence value={tag.proposal.confidence} />
       <p className="reason">
-        <strong style={{ color: "var(--ink)" }}>{meaning.hierarchy}</strong>
-        <br />
         {meaning.unit} · {assetName} · {meaning.role}
       </p>
       {tag.proposal.template ? <p className="callout callout--tint">Template · {tag.proposal.template}</p> : null}

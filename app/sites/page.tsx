@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { FleetMap } from "@/components/fleet-map";
 import { usePacket } from "@/components/packet-provider";
 import { paths } from "@/lib/paths";
 
@@ -10,50 +11,42 @@ export default function SitesPage() {
     <>
       <header className="page-head">
         <p className="eyebrow">
-          <b>01</b>Discovery
+          <b>Discovery</b>Read-only
         </p>
-        <h1>Sites</h1>
-        <p className="lede">Each site was discovered read-only from the SCADA, historian, and gateways already installed. Nothing here writes to the control network.</p>
+        <h1>The fleet as it was found.</h1>
+        <p className="lede">
+          Each site was inventoried from the SCADA, historian, and gateways already installed. Nothing on this page writes to the control network.
+        </p>
       </header>
-      <div className="table-wrap">
-        <table>
-          <thead>
-            <tr>
-              <th>Site</th>
-              <th>Type</th>
-              <th>Model</th>
-              <th>Review</th>
-              <th>Gateways</th>
-            </tr>
-          </thead>
-          <tbody>
-            {db.sites.map((site) => {
-              const tags = db.tags.filter((tag) => tag.siteId === site.id);
-              const review = tags.filter((tag) => tag.status === "pending" || tag.status === "drift").length;
-              const nodes = db.nodes.filter((node) => node.siteId === site.id);
-              const online = nodes.filter((node) => node.connectivity === "online").length;
-              return (
-                <tr key={site.id}>
-                  <td>
-                    <Link href={paths.site(site.id)}>
-                      <strong>{site.name}</strong>
-                    </Link>
-                    <div className="muted">{site.region}</div>
-                  </td>
-                  <td>
-                    {site.kind}
-                    <div className="muted">{site.capacity}</div>
-                  </td>
-                  <td className="num">v{site.modelVersion}</td>
-                  <td>{review > 0 ? <span className="state state--warn">{review} waiting</span> : <span className="state state--ok">Current</span>}</td>
-                  <td className="num">
-                    {online}/{nodes.length}
-                  </td>
-                </tr>
-              );
-            })}
-          </tbody>
-        </table>
+      <FleetMap sites={db.sites} nodes={db.nodes} tags={db.tags} />
+      <div className="site-cards">
+        {db.sites.map((site) => {
+          const tags = db.tags.filter((tag) => tag.siteId === site.id);
+          const review = tags.filter((tag) => tag.status === "pending" || tag.status === "drift").length;
+          const accepted = tags.filter((tag) => tag.status === "accepted").length;
+          const nodes = db.nodes.filter((node) => node.siteId === site.id);
+          const online = nodes.filter((node) => node.connectivity === "online").length;
+          const pct = tags.length === 0 ? 0 : Math.round((accepted / tags.length) * 100);
+          return (
+            <Link key={site.id} href={paths.site(site.id)} className="card site-card">
+              <span className="label">{site.kind}</span>
+              <strong>{site.name}</strong>
+              <span>
+                {site.region} · {site.capacity}
+              </span>
+              <span className="meter meter--wide" title={`${pct}% in the model`}>
+                <i style={{ width: `${pct}%` }} />
+              </span>
+              <span className="site-card__meta">
+                <em>model v{site.modelVersion}</em>
+                <em>
+                  {online}/{nodes.length} up
+                </em>
+                <em className={review > 0 ? "is-warn" : ""}>{review > 0 ? `${review} to review` : "Model current"}</em>
+              </span>
+            </Link>
+          );
+        })}
       </div>
     </>
   );

@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { DemoPath } from "./demo-path";
 import { NavLinks } from "./nav-links";
 import { Notice } from "./notice";
 import { ResetButton } from "./reset-button";
@@ -48,11 +49,17 @@ export function Shell({ children }: { children: React.ReactNode }) {
           <div className="content">
             {ready ? (
               <>
+                <DemoPath />
                 <Notice notice={notice} />
                 {children}
               </>
             ) : (
-              <p className="muted">Loading the fleet…</p>
+              <div className="skeleton" aria-hidden>
+                <div className="sk sk--path" />
+                <div className="sk sk--title" />
+                <div className="sk sk--lede" />
+                <div className="sk sk--hero" />
+              </div>
             )}
           </div>
         </main>

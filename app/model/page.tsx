@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { AssetGraph } from "@/components/asset-graph";
 import { usePacket } from "@/components/packet-provider";
 import { operatorName } from "@/lib/constants";
 import { formatWhen } from "@/lib/format";
@@ -39,6 +40,17 @@ function ModelView() {
           Confirmed mappings are one versioned model, with lineage back to the raw tag name. Applications bind to this, not to INV3_ACPWR_L1.
         </p>
       </header>
+      {site ? (
+        <section className="panel graph-panel">
+          <div className="panel__head">
+            <h2>{site.name}</h2>
+            <span className="num">v{site.modelVersion}</span>
+          </div>
+          <AssetGraph assets={db.assets} tags={db.tags} siteId={site.id} activeId={asset?.id} />
+        </section>
+      ) : (
+        <p className="empty">The model is empty until a tag is confirmed.</p>
+      )}
       <div className="model">
         <nav className="panel" aria-label="Assets">
           <ul className="tree">

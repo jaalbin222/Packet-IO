@@ -1,23 +1,44 @@
 "use client";
 
 import Link from "next/link";
+import { FleetMap } from "@/components/fleet-map";
+import { Telemetry } from "@/components/telemetry";
 import { usePacket } from "@/components/packet-provider";
 import { certTone, formatDay } from "@/lib/format";
 import { paths } from "@/lib/paths";
 
 export default function FleetPage() {
   const { db } = usePacket();
+  const spotlight = db.nodes.filter((node) => node.connectivity === "online").slice(0, 3);
   return (
     <>
       <header className="page-head">
         <p className="eyebrow">
-          <b>Module 03</b>Node registry
+          <b>Runtime</b>Node registry
         </p>
         <h1>What is running where.</h1>
         <p className="lede">
-          Every gateway reports identity, connectivity, and the versions of runtime, model, and certificates. Offline nodes keep their last record.
+          Every gateway reports identity, connectivity, and the versions of runtime, model, and certificates. Offline nodes keep their last record and queue the next campaign.
         </p>
       </header>
+      <FleetMap sites={db.sites} nodes={db.nodes} tags={db.tags} />
+      {spotlight.length > 0 ? (
+        <div className="traces traces--tight">
+          {spotlight.map((node) => (
+            <Link key={node.id} href={paths.node(node.id)} className="trace-link">
+              <Telemetry
+                seed={node.id}
+                live={node.uplink === "up" && node.connectivity === "online"}
+                label={node.name}
+                unit={node.siteId === "north-ridge" ? "%" : "kW"}
+                caption={node.uplink === "down" ? "Uplink down · buffering locally" : db.sites.find((site) => site.id === node.siteId)?.name}
+              />
+            </Link>
+          ))}
+        </div>
+      ) : (
+        <p className="empty">No gateway is online. The last records are still in the registry below.</p>
+      )}
       <div className="table-wrap">
         <table>
           <thead>
