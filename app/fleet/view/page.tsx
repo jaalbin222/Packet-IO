@@ -3,6 +3,7 @@
 import { Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
+import { Telemetry } from "@/components/telemetry";
 import { usePacket } from "@/components/packet-provider";
 import { certTone, formatDay, stageLabel } from "@/lib/format";
 import { paths } from "@/lib/paths";
@@ -58,6 +59,17 @@ function NodeView() {
           ) : null}
         </div>
       </header>
+      <Telemetry
+        seed={`${node.id}-trace`}
+        live={node.uplink === "up" && node.connectivity === "online"}
+        label={node.uplink === "down" ? "Local buffer" : "Live acquisition"}
+        unit={node.siteId === "north-ridge" ? "%" : node.siteId === "hale" ? "m/s" : "kW"}
+        caption={
+          node.uplink === "down"
+            ? "Uplink down · the trace stays on the gateway until the link returns"
+            : `${site?.name ?? "Site"} · ${node.acquisition[0]?.protocol ?? "Modbus"} ${node.acquisition[0]?.rate ?? ""}`
+        }
+      />
       <article className="panel runtime">
         <div className="panel__head">
           <strong>{site?.name} runtime</strong>

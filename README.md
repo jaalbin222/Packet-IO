@@ -4,7 +4,7 @@ Packet is the data infrastructure for applications that run on power assets. It 
 
 A tag like `INV3_ACPWR_L1` carries no unit, asset, or hierarchy. Mapping it by hand is the expensive part of every edge project — often hundreds of engineering hours per site — and the same work is repeated at the next site because the names do not match. Packet proposes a meaning for each tag, asks a person to confirm the ones it is not sure about, and then treats the confirmed model as the address every later deployment uses.
 
-This repository is a working console for that loop. It is seeded with a four-site design-partner fleet. Proposals, device discovery, and gateway telemetry are fixture data standing in for the on-site inference engine and runtime.
+This repository is a working console for that loop. The home screen walks one raw tag through a proposed meaning, the canonical model, and a fleet deployment. It is seeded with a four-site design-partner fleet. Proposals, device discovery, and gateway telemetry are fixture data standing in for the on-site inference engine and runtime.
 
 The live demo is a static site: [https://jaalbin222.github.io/Packet-IO/](https://jaalbin222.github.io/Packet-IO/).
 

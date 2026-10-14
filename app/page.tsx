@@ -1,116 +1,87 @@
 "use client";
 
 import Link from "next/link";
+import { FleetMap } from "@/components/fleet-map";
+import { StoryBoard } from "@/components/story-board";
+import { Telemetry } from "@/components/telemetry";
 import { usePacket } from "@/components/packet-provider";
-import { operatorName } from "@/lib/constants";
-import { formatWhen, stageLabel } from "@/lib/format";
 import { paths } from "@/lib/paths";
 
 export default function OverviewPage() {
   const { db } = usePacket();
-  const online = db.nodes.filter((node) => node.connectivity === "online").length;
-  const degraded = db.nodes.filter((node) => node.connectivity === "degraded").length;
-  const offline = db.nodes.filter((node) => node.connectivity === "offline").length;
   const review = db.tags.filter((tag) => tag.status === "pending" || tag.status === "drift").length;
   const inModel = db.tags.filter((tag) => tag.status === "accepted").length;
-  const open = db.deployments.filter((item) => item.stage !== "complete" && item.stage !== "rolled_back");
-  const behind = db.nodes.filter((node) => {
-    const site = db.sites.find((item) => item.id === node.siteId);
-    return site && site.modelVersion !== node.modelVersion;
-  });
+  const online = db.nodes.filter((node) => node.connectivity === "online").length;
+  const featured = [
+    { id: "cr-gw-01", label: "Chisholm · AC power", unit: "kW", live: true, caption: "Acquired against the model" },
+    { id: "nr-gw-01", label: "North Ridge · SOC", unit: "%", live: false, caption: "Uplink down · buffering locally" },
+    { id: "hc-gw-01", label: "Hale Creek · wind speed", unit: "m/s", live: true, caption: "Turbine T3 · 1 s" },
+  ];
 
   return (
     <>
-      <header className="page-head">
+      <header className="hero">
         <p className="eyebrow">
-          <b>Fleet</b>Control plane
+          <b>Packet.io</b>Design-partner fleet
         </p>
-        <h1>One model for every site.</h1>
+        <h1>INV3_ACPWR_L1 is not an asset.</h1>
         <p className="lede">
-          Raw tags are proposed with a confidence score, a person confirms them, and applications deploy against that canonical model.
+          The expensive part of every edge project is deciding what a raw tag means. Packet proposes that meaning, a person confirms the ones it is not sure about, and every later application deploys against the confirmed model.
         </p>
+        <div className="hero__actions">
+          <a className="btn btn--primary" href="#loop">
+            Walk the loop
+          </a>
+          <Link className="btn btn--ghost" href={paths.site("chisholm", "cr-inv3-ac")}>
+            Open the ambiguous tag
+          </Link>
+        </div>
+        <dl className="hero__facts">
+          <div>
+            <dt>Sites</dt>
+            <dd>{db.sites.length}</dd>
+          </div>
+          <div>
+            <dt>Gateways up</dt>
+            <dd>
+              {online}
+              <em>/{db.nodes.length}</em>
+            </dd>
+          </div>
+          <div>
+            <dt>In the model</dt>
+            <dd>{inModel}</dd>
+          </div>
+          <div>
+            <dt>Still unnamed</dt>
+            <dd>{review}</dd>
+          </div>
+        </dl>
       </header>
-      <section className="stats">
-        <div className="stat">
-          <span>Sites</span>
-          <b>{db.sites.length}</b>
+
+      <div id="loop">
+        <StoryBoard />
+      </div>
+
+      <section className="stage">
+        <div className="stage__head">
+          <h2>Four sites, one address space.</h2>
+          <Link href={paths.fleet}>Fleet registry</Link>
         </div>
-        <div className="stat">
-          <span>Gateways</span>
-          <b>
-            {online}
-            <em style={{ fontSize: 16, color: "var(--muted)", fontFamily: "var(--body)" }}> / {db.nodes.length}</em>
-          </b>
+        <FleetMap sites={db.sites} nodes={db.nodes} tags={db.tags} />
+      </section>
+
+      <section className="stage">
+        <div className="stage__head">
+          <h2>The runtime keeps the trace when the uplink does not.</h2>
+          <Link href={paths.node("nr-gw-01")}>North Ridge gateway</Link>
         </div>
-        <div className="stat">
-          <span>Tags in model</span>
-          <b>{inModel}</b>
-        </div>
-        <div className="stat">
-          <span>Need review</span>
-          <b>{review}</b>
+        <div className="traces">
+          {featured.map((item) => (
+            <Telemetry key={item.id} seed={item.id} live={item.live} label={item.label} unit={item.unit} caption={item.caption} />
+          ))}
         </div>
       </section>
-      <p className="muted" style={{ marginTop: -12, marginBottom: 22 }}>
-        {online} online · {degraded} degraded · {offline} offline
-        {behind.length > 0 ? ` · ${behind.length} gateways behind the canonical model` : ""}
-      </p>
-      <div className="grid-2">
-        <section className="panel">
-          <div className="panel__head">
-            <h2>Sites</h2>
-            <Link href={paths.sites}>All sites</Link>
-          </div>
-          {db.sites.map((site) => {
-            const waiting = db.tags.filter((tag) => tag.siteId === site.id && (tag.status === "pending" || tag.status === "drift")).length;
-            const nodes = db.nodes.filter((node) => node.siteId === site.id);
-            const up = nodes.filter((node) => node.connectivity === "online").length;
-            return (
-              <Link key={site.id} href={paths.site(site.id)} className="list-link">
-                <span>
-                  <strong>{site.name}</strong>
-                  <br />
-                  <small>
-                    {site.kind} · {site.capacity} · model v{site.modelVersion}
-                  </small>
-                </span>
-                <small>
-                  {up}/{nodes.length} online
-                  {waiting > 0 ? ` · ${waiting} to review` : ""}
-                </small>
-              </Link>
-            );
-          })}
-        </section>
-        <section className="panel">
-          <div className="panel__head">
-            <h2>Open campaigns</h2>
-            <Link href={paths.deployments}>All</Link>
-          </div>
-          {open.length === 0 ? <p className="empty">No campaign is in flight.</p> : null}
-          {open.map((campaign) => (
-            <Link key={campaign.id} href={paths.deployment(campaign.id)} className="list-link">
-              <span>
-                <strong>{campaign.appName}</strong>
-                <br />
-                <small>
-                  {campaign.version} · {stageLabel(campaign.stage)} · {campaign.approvals.length}/{campaign.approvalsRequired} approvals
-                </small>
-              </span>
-            </Link>
-          ))}
-        </section>
-      </div>
-      <h2 className="subhead">Recent changes</h2>
-      <ul className="timeline">
-        {db.audit.slice(0, 6).map((event) => (
-          <li key={event.id}>
-            <time dateTime={event.at}>{formatWhen(event.at)}</time>
-            <span>{operatorName(event.actor)}</span>
-            {event.href ? <Link href={event.href}>{event.message}</Link> : <span>{event.message}</span>}
-          </li>
-        ))}
-      </ul>
     </>
   );
 }
